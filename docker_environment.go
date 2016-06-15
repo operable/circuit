@@ -1,6 +1,7 @@
 package circuit
 
 import (
+	"fmt"
 	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/container"
 	"github.com/operable/circuit-driver/api"
@@ -31,8 +32,9 @@ func (de *dockerEnvironment) init(options CreateEnvironmentOptions) error {
 		VolumesFrom: []string{de.dockerOptions.DriverInstance},
 	}
 	hostConfig.Memory = de.dockerOptions.Memory * 1024 * 1024
+	fullName := fmt.Sprintf("%s:%s", de.dockerOptions.Image, de.dockerOptions.Tag)
 	config := container.Config{
-		Image:     de.dockerOptions.Image,
+		Image:     fullName,
 		Cmd:       []string{de.dockerOptions.DriverPath},
 		OpenStdin: true,
 		StdinOnce: false,
@@ -77,7 +79,7 @@ func (de *dockerEnvironment) runWorker() {
 				panic(err)
 			}
 			var result api.ExecResult
-			if err := decoder.DecodeResult(&result); err != nil {
+			if err := decoder.DecodeResult(&result); err != nil && err != io.EOF {
 				panic(err)
 			}
 			de.results <- result
@@ -128,8 +130,7 @@ func (de *dockerEnvironment) Shutdown() error {
 	}
 	de.control <- 1
 	removeOptions := types.ContainerRemoveOptions{
-		Force:       true,
-		RemoveLinks: true,
+		Force: true,
 	}
 	err := de.dockerOptions.Conn.ContainerRemove(context.Background(), de.containerID, removeOptions)
 	de.isDead = true
