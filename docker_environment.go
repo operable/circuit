@@ -4,6 +4,7 @@ import (
 	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/container"
 	"github.com/operable/circuit-driver/api"
+	"github.com/operable/circuit-driver/io"
 	"golang.org/x/net/context"
 )
 
@@ -32,7 +33,7 @@ func (de *dockerEnvironment) init(options CreateEnvironmentOptions) error {
 	hostConfig.Memory = de.dockerOptions.Memory * 1024 * 1024
 	config := container.Config{
 		Image:     de.dockerOptions.Image,
-		Cmd:       []string{de.options.DriverPath},
+		Cmd:       []string{de.dockerOptions.DriverPath},
 		OpenStdin: true,
 		StdinOnce: false,
 		Tty:       false,
@@ -66,7 +67,7 @@ func (de *dockerEnvironment) runWorker() {
 		panic(err)
 	}
 	encoder := api.WrapEncoder(resp.Conn)
-	decoder := api.WrapDecoder(api.NewDockerStdoutReader(resp.Conn))
+	decoder := api.WrapDecoder(io.NewDockerStdoutReader(resp.Conn))
 	for {
 		select {
 		case <-de.control:
@@ -105,6 +106,7 @@ func (de *dockerEnvironment) GetUserData() (EnvironmentUserData, error) {
 
 func (de *dockerEnvironment) GetMetadata() EnvironmentMetadata {
 	return EnvironmentMetadata{
+		"bundle":    de.options.Bundle,
 		"image":     de.dockerOptions.Image,
 		"tag":       de.dockerOptions.Tag,
 		"container": de.containerID,
@@ -113,7 +115,7 @@ func (de *dockerEnvironment) GetMetadata() EnvironmentMetadata {
 
 func (de *dockerEnvironment) Run(request api.ExecRequest) (api.ExecResult, error) {
 	if de.isDead {
-		return api.ExecResult{}, ErrorDeadEnvironment
+		return EmptyExecResult, ErrorDeadEnvironment
 	}
 	de.requests <- request
 	result := <-de.results
@@ -124,6 +126,7 @@ func (de *dockerEnvironment) Shutdown() error {
 	if de.isDead {
 		return ErrorDeadEnvironment
 	}
+	de.control <- 1
 	removeOptions := types.ContainerRemoveOptions{
 		Force:       true,
 		RemoveLinks: true,
