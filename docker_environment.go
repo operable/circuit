@@ -66,7 +66,7 @@ func (de *dockerEnvironment) runWorker() {
 		panic(err)
 	}
 	encoder := api.WrapEncoder(resp.Conn)
-	decoder := api.WrapDecoder(api.NewDockerStderrReader(resp.Conn))
+	decoder := api.WrapDecoder(api.NewDockerStdoutReader(resp.Conn))
 	for {
 		select {
 		case <-de.control:
