@@ -1,11 +1,14 @@
 TOP_PKG                      = github.com/operable/circuit
 BUILD_DIR                    = _build
-PKG_DIRS                    := $(shell find . -not -path '*/\.*' -type d | grep -v ${BUILD_DIR} | sort)
-PKGS                        := $(TOP_PKG) $(subst ., $(TOP_PKG), $(PKG_DIRS))
+PKG_DIRS                    := $(shell find . -not -path '*/\.*' -type d | grep -v ${BUILD_DIR} | uniq | sort)
+PKGS                        := $(subst ., $(TOP_PKG), $(PKG_DIRS))
 
-.PHONY: all test exe
+.PHONY: all test vet
 
-all: test
+all: vet test
 
 test:
 	go test -cover $(PKGS)
+
+vet:
+	go vet $(PKGS)
