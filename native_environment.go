@@ -32,7 +32,7 @@ func (ne *nativeEnvironment) runWorker() {
 		case <-ne.control:
 			break
 		case request := <-ne.requests:
-			result, _ := ne.driver.Run(request)
+			result, _ := ne.driver.Run(&request)
 			ne.results <- result
 		}
 	}
