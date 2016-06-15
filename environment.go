@@ -3,6 +3,7 @@ package circuit
 import (
 	"errors"
 	"github.com/docker/engine-api/client"
+	"github.com/operable/circuit-driver/api"
 )
 
 type EnvironmentKind int
@@ -20,7 +21,7 @@ type Environment interface {
 	SetUserData(data EnvironmentUserData) error
 	GetUserData() (EnvironmentUserData, error)
 	GetMetadata() EnvironmentMetadata
-	Run(request interface{}) (interface{}, error)
+	Run(request api.ExecRequest) (api.ExecResult, error)
 	Shutdown() error
 }
 
@@ -41,5 +42,15 @@ type CreateEnvironmentOptions struct {
 var ErrorDeadEnvironment = errors.New("Dead environment")
 
 func CreateEnvironment(options CreateEnvironmentOptions) (Environment, error) {
+	switch options.Kind {
+	case NativeKind:
+		return nil, nil
+	case DockerKind:
+		env := &dockerEnvironment{}
+		if err := env.init(options); err != nil {
+			return nil, err
+		}
+		return env, nil
+	}
 	return nil, nil
 }

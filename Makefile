@@ -1,5 +1,6 @@
 TOP_PKG                      = github.com/operable/circuit
-PKG_DIRS                    := $(shell find . \! -name "." -type d | sort)
+BUILD_DIR                    = _build
+PKG_DIRS                    := $(shell find . -not -path '*/\.*' -type d | grep -v ${BUILD_DIR} | sort)
 PKGS                        := $(TOP_PKG) $(subst ., $(TOP_PKG), $(PKG_DIRS))
 
 .PHONY: all test exe

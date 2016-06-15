@@ -3,6 +3,7 @@ package circuit
 import (
 	"github.com/docker/engine-api/types"
 	"github.com/docker/engine-api/types/container"
+	"github.com/operable/circuit-driver/api"
 	"golang.org/x/net/context"
 )
 
@@ -14,9 +15,14 @@ type dockerEnvironment struct {
 	tag           string
 	userData      EnvironmentUserData
 	isDead        bool
+	requests      chan api.ExecRequest
+	results       chan api.ExecResult
+	control       chan byte
 }
 
-func (de *dockerEnvironment) init() error {
+func (de *dockerEnvironment) init(options CreateEnvironmentOptions) error {
+	de.options = options
+	de.dockerOptions = options.DockerOptions
 	de.isDead = false
 	client := de.dockerOptions.Conn
 	hostConfig := container.HostConfig{
@@ -29,6 +35,7 @@ func (de *dockerEnvironment) init() error {
 		Cmd:       []string{de.options.DriverPath},
 		OpenStdin: true,
 		StdinOnce: false,
+		Tty:       false,
 	}
 	container, err := client.ContainerCreate(context.Background(), &config, &hostConfig, nil, "")
 	if err != nil {
@@ -39,7 +46,42 @@ func (de *dockerEnvironment) init() error {
 	if err != nil {
 		return err
 	}
+	de.requests = make(chan api.ExecRequest)
+	de.results = make(chan api.ExecResult)
+	de.control = make(chan byte)
+	go func() {
+		de.runWorker()
+	}()
 	return nil
+}
+
+func (de *dockerEnvironment) runWorker() {
+	resp, err := de.dockerOptions.Conn.ContainerAttach(context.Background(), de.containerID, types.ContainerAttachOptions{
+		Stream: true,
+		Stdin:  true,
+		Stdout: true,
+		Stderr: true,
+	})
+	if err != nil {
+		panic(err)
+	}
+	encoder := api.WrapEncoder(resp.Conn)
+	decoder := api.WrapDecoder(api.NewDockerStderrReader(resp.Conn))
+	for {
+		select {
+		case <-de.control:
+			break
+		case request := <-de.requests:
+			if err := encoder.EncodeRequest(&request); err != nil {
+				panic(err)
+			}
+			var result api.ExecResult
+			if err := decoder.DecodeResult(&result); err != nil {
+				panic(err)
+			}
+			de.results <- result
+		}
+	}
 }
 
 func (de *dockerEnvironment) GetKind() EnvironmentKind {
@@ -69,12 +111,13 @@ func (de *dockerEnvironment) GetMetadata() EnvironmentMetadata {
 	}
 }
 
-func (de *dockerEnvironment) Run(request interface{}) (interface{}, error) {
+func (de *dockerEnvironment) Run(request api.ExecRequest) (api.ExecResult, error) {
 	if de.isDead {
-		return nil, ErrorDeadEnvironment
+		return api.ExecResult{}, ErrorDeadEnvironment
 	}
-
-	return nil, nil
+	de.requests <- request
+	result := <-de.results
+	return result, nil
 }
 
 func (de *dockerEnvironment) Shutdown() error {
