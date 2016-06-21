@@ -14,11 +14,11 @@ const (
 )
 
 type EnvironmentMetadata map[string]string
-type EnvironmentUserData interface{}
+type EnvironmentUserData map[string]interface{}
 
 type Environment interface {
 	GetKind() EnvironmentKind
-	SetUserData(data EnvironmentUserData) error
+	SetUserData(EnvironmentUserData) error
 	GetUserData() (EnvironmentUserData, error)
 	GetMetadata() EnvironmentMetadata
 	Run(request api.ExecRequest) (api.ExecResult, error)
