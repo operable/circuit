@@ -30,6 +30,7 @@ func (de *dockerEnvironment) init(options CreateEnvironmentOptions) error {
 	hostConfig := container.HostConfig{
 		Privileged:  false,
 		VolumesFrom: []string{de.dockerOptions.DriverInstance},
+		Binds:       de.dockerOptions.Binds,
 	}
 	hostConfig.Memory = de.dockerOptions.Memory * 1024 * 1024
 	fullName := fmt.Sprintf("%s:%s", de.dockerOptions.Image, de.dockerOptions.Tag)

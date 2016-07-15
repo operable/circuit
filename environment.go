@@ -29,6 +29,7 @@ type DockerEnvironmentOptions struct {
 	Conn           *client.Client
 	Image          string
 	Tag            string
+	Binds          []string
 	DriverInstance string
 	DriverPath     string
 	Memory         int64
