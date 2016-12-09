@@ -2,8 +2,8 @@ package circuit
 
 import (
 	"fmt"
-	"github.com/docker/engine-api/types"
-	"github.com/docker/engine-api/types/container"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/operable/circuit-driver/api"
 	"github.com/operable/circuit-driver/io"
 	"golang.org/x/net/context"
