@@ -2,7 +2,7 @@ package circuit
 
 import (
 	"errors"
-	"github.com/docker/engine-api/client"
+	"github.com/docker/docker/client"
 	"github.com/operable/circuit-driver/api"
 )
 
